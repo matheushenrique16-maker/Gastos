@@ -1,0 +1,2657 @@
+<!DOCTYPE html>
+<html lang="pt-BR" style="background:#0E1116;">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Ledger">
+<meta name="theme-color" content="#1A1E24">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='40' fill='%231A1E24'/%3E%3Ctext x='90' y='118' text-anchor='middle' font-family='-apple-system,sans-serif' font-size='90' font-weight='700' fill='white'%3EL%3C/text%3E%3C/svg%3E">
+<title>ledger</title>
+<script>
+  // Apply theme IMMEDIATELY to prevent flash of mixed styles
+  (function() {
+    try {
+      const saved = JSON.parse(localStorage.getItem('ledger_v1') || '{}');
+      let theme = saved.theme || 'dark';
+      if (theme === 'auto') {
+        theme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+      }
+      document.documentElement.setAttribute('data-theme', theme);
+      // Set on body too once it exists
+      document.addEventListener('DOMContentLoaded', function() {
+        document.body.setAttribute('data-theme', theme);
+      });
+      document.documentElement.style.setProperty('background', theme === 'light' ? '#F2F3F5' : '#0E1116');
+      if (saved.accentColor) {
+        document.documentElement.style.setProperty('--accent', saved.accentColor);
+        const hex = saved.accentColor.replace('#','').match(/.{2}/g).map(h => parseInt(h, 16));
+        document.documentElement.style.setProperty('--accent-rgb', hex[0]+', '+hex[1]+', '+hex[2]);
+      }
+    } catch(e) {}
+  })();
+</script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+button { font-family: inherit; -webkit-appearance: none; appearance: none; color: inherit; }
+
+:root {
+  --accent: #4DD896;
+  --accent-rgb: 77, 216, 150;
+  --bg: #0E1116;
+  --surface: rgba(255, 255, 255, 0.06);
+  --surface-strong: rgba(255, 255, 255, 0.10);
+  --surface-raised: rgba(30, 35, 42, 0.85);
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.14);
+  --text: #FFFFFF;
+  --text-2: rgba(255, 255, 255, 0.65);
+  --text-3: rgba(255, 255, 255, 0.4);
+  --text-4: rgba(255, 255, 255, 0.25);
+  --text-inverse: #0E1116;
+  --red: #FF5E6C;
+  --green: #4DD896;
+  --amber: #FFB800;
+  --blue: #6CA3FF;
+}
+
+[data-theme="light"] {
+  --bg: #F2F3F5;
+  --surface: rgba(0, 0, 0, 0.04);
+  --surface-strong: rgba(0, 0, 0, 0.07);
+  --surface-raised: rgba(255, 255, 255, 0.92);
+  --border: rgba(0, 0, 0, 0.08);
+  --border-strong: rgba(0, 0, 0, 0.14);
+  --text: #0E1116;
+  --text-2: rgba(14, 17, 22, 0.65);
+  --text-3: rgba(14, 17, 22, 0.4);
+  --text-4: rgba(14, 17, 22, 0.25);
+  --text-inverse: #FFFFFF;
+}
+
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  min-height: 100vh;
+  min-height: 100dvh;
+  font-feature-settings: 'ss02';
+}
+
+/* Wallpaper fotográfico estilo Revolut - gradients múltiplos simulando tecido/seda iluminada */
+body {
+  padding: env(safe-area-inset-top) 0 calc(env(safe-area-inset-bottom) + 110px);
+  max-width: 520px;
+  margin: 0 auto;
+  position: relative;
+  background-attachment: fixed;
+}
+body[data-theme="dark"] {
+  background:
+    radial-gradient(ellipse 70% 50% at 50% 20%, rgba(150, 170, 210, 0.32), transparent 65%),
+    radial-gradient(ellipse 90% 40% at 15% 10%, rgba(120, 145, 185, 0.22), transparent 55%),
+    radial-gradient(ellipse 80% 50% at 90% 50%, rgba(100, 130, 175, 0.18), transparent 60%),
+    radial-gradient(ellipse 100% 60% at 50% 100%, rgba(5, 8, 14, 0.5), transparent 70%),
+    linear-gradient(165deg, #1F242E 0%, #161B23 40%, #0C1016 100%);
+  background-attachment: fixed;
+}
+body[data-theme="light"] {
+  background:
+    radial-gradient(ellipse 60% 40% at 50% 25%, rgba(255, 255, 255, 0.6), transparent 60%),
+    radial-gradient(ellipse 80% 30% at 20% 15%, rgba(210, 220, 240, 0.4), transparent 50%),
+    linear-gradient(165deg, #FFFFFF 0%, #EEF1F5 40%, #E6E9EF 100%);
+  background-attachment: fixed;
+}
+
+/* Textura de tecido - ruído fino */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    repeating-linear-gradient(45deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 2px),
+    repeating-linear-gradient(-45deg, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 3px);
+  pointer-events: none;
+  z-index: 0;
+  opacity: 1;
+}
+
+body > * { position: relative; z-index: 1; }
+
+.screen { display: none; animation: fade 0.28s cubic-bezier(0.2, 0.9, 0.3, 1); }
+.screen.active { display: block; }
+@keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+/* TOP BAR */
+.topbar {
+  padding: 20px 20px 0;
+  display: flex; align-items: center; gap: 12px;
+}
+.topbar .logo-mark {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--text);
+}
+.topbar .spacer { flex: 1; }
+.topbar .icon-btn {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: var(--surface);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  color: var(--text) !important;
+  transition: all 0.15s;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.topbar .icon-btn:active { transform: scale(0.92); background: var(--surface-strong); }
+.topbar .icon-btn svg { width: 18px; height: 18px; stroke: currentColor; stroke-width: 1.8; fill: none; }
+
+/* HERO - estilo Revolut: número grande solto no wallpaper */
+.hero {
+  text-align: center;
+  padding: 48px 24px 28px;
+}
+.hero-caption {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-2);
+  letter-spacing: 0.01em;
+  margin-bottom: 12px;
+}
+.hero-value {
+  font-size: 52px;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+}
+.hero-value .curr {
+  font-size: 28px;
+  font-weight: 500;
+  color: var(--text-2);
+  margin-right: 4px;
+  letter-spacing: -0.02em;
+}
+.hero-value .cents {
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--text-3);
+  letter-spacing: -0.02em;
+  margin-left: 2px;
+  align-self: flex-end;
+  padding-bottom: 8px;
+}
+.hero-value .sign-neg { color: var(--red); }
+
+.hero-pill {
+  display: inline-flex; align-items: center; gap: 8px;
+  margin-top: 16px;
+  padding: 8px 16px;
+  background: var(--surface-strong);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text) !important;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.hero-pill:active { transform: scale(0.97); }
+.hero-pill svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 1.8; fill: none; }
+
+/* Sub indicator dots (estilo Revolut) */
+.dots {
+  display: flex; gap: 5px; justify-content: center;
+  margin-top: 24px;
+}
+.dots .d { width: 5px; height: 5px; border-radius: 50%; background: var(--text-4); }
+.dots .d.active { background: var(--text-2); width: 5px; }
+
+/* QUICK ACTIONS (botões circulares) */
+.quick-actions {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  padding: 32px 20px 24px;
+}
+.qa {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-family: inherit;
+  color: var(--text) !important;
+  padding: 8px 0;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.qa:active { transform: scale(0.96); }
+.qa-icon {
+  width: 54px; height: 54px;
+  border-radius: 50%;
+  background: var(--surface);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text);
+}
+.qa-icon svg { width: 22px; height: 22px; stroke: currentColor; stroke-width: 1.8; fill: none; }
+.qa-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+
+/* BAR DE CONSUMO - sutil, abaixo do hero */
+.hero-bar-wrap {
+  padding: 0 32px;
+  margin-top: 24px;
+}
+.hero-bar-track {
+  height: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 100px;
+  overflow: hidden;
+}
+[data-theme="light"] .hero-bar-track { background: rgba(0, 0, 0, 0.08); }
+.hero-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 100px;
+  transition: width 0.4s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+.hero-bar-fill.warning { background: var(--amber); }
+.hero-bar-fill.danger { background: var(--red); }
+.hero-bar-meta {
+  margin-top: 8px;
+  display: flex; justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-3);
+  font-weight: 500;
+}
+.hero-bar-meta .pct { color: var(--text-2); }
+
+/* SECTION HEADER */
+.section {
+  padding: 20px 20px 10px;
+  display: flex; align-items: baseline; justify-content: space-between;
+}
+.section-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.02em;
+}
+.section-title .count {
+  font-size: 13px;
+  color: var(--text-3);
+  font-weight: 500;
+  margin-left: 6px;
+}
+.section-action {
+  font-size: 13px;
+  color: var(--accent) !important;
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-weight: 600;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.section-action:active { opacity: 0.5; }
+
+/* CARDS COM GLASSMORPHISM (estilo Revolut) */
+.card-group {
+  margin: 0 16px 12px;
+  background: rgba(30, 35, 42, 0.55);
+  backdrop-filter: blur(30px) saturate(140%);
+  -webkit-backdrop-filter: blur(30px) saturate(140%);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  overflow: hidden;
+}
+[data-theme="light"] .card-group { background: rgba(255, 255, 255, 0.75); }
+
+.row {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.row:last-child { border-bottom: none; }
+.row:active { background: var(--surface); }
+
+.row-icon {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: var(--surface-strong);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  font-size: 18px;
+  position: relative;
+}
+.row-icon.circle-colored {
+  background: #6B7F5C;
+  color: white;
+  font-weight: 600;
+  font-size: 14px;
+}
+.row-body { flex: 1; min-width: 0; }
+.row-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.01em;
+  display: flex; align-items: center; gap: 6px;
+  flex-wrap: wrap;
+}
+.row-sub {
+  font-size: 13px;
+  color: var(--text-2);
+  margin-top: 2px;
+  font-weight: 400;
+}
+.row-val {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.row-val-sub {
+  font-size: 12px;
+  color: var(--text-3);
+  margin-top: 2px;
+  font-weight: 500;
+}
+.row-val-sub.positive { color: var(--green); }
+.row-val-sub.warning { color: var(--amber); }
+.row-val-sub.danger { color: var(--red); }
+.row-chevron {
+  color: var(--text-3);
+  margin-left: 6px;
+  font-size: 16px;
+}
+
+.pill-small {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: var(--surface-strong);
+  color: var(--text-2);
+  letter-spacing: 0.02em;
+}
+.pill-main {
+  background: var(--accent);
+  color: #0E1116;
+  font-weight: 700;
+}
+[data-theme="light"] .pill-main { color: #0E1116; }
+.pill-fix { background: rgba(108, 163, 255, 0.15); color: var(--blue); }
+.pill-var { background: rgba(255, 184, 0, 0.15); color: var(--amber); }
+
+/* WALLET CARD - maior, com destaque primary */
+.wallet {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 14px;
+  align-items: center;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.wallet:last-child { border-bottom: none; }
+.wallet:active { background: var(--surface); }
+.wallet-icon {
+  width: 48px; height: 48px;
+  border-radius: 14px;
+  background: var(--surface-strong);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+}
+.wallet-info { min-width: 0; }
+.wallet-name {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  display: flex; align-items: center; gap: 6px;
+  flex-wrap: wrap;
+}
+.wallet-meta {
+  font-size: 12px;
+  color: var(--text-3);
+  margin-top: 3px;
+  font-weight: 500;
+}
+.wallet-val {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  text-align: right;
+}
+.wallet-sub {
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 3px;
+  font-weight: 500;
+}
+.wallet-sub.positive { color: var(--accent); }
+.wallet-sub.warning { color: var(--amber); }
+.wallet-sub.danger { color: var(--red); }
+
+/* BANNER (tipo invite friends do Revolut) */
+.banner {
+  margin: 20px 16px 12px;
+  padding: 18px 20px;
+  background: rgba(30, 35, 42, 0.55);
+  backdrop-filter: blur(30px) saturate(140%);
+  -webkit-backdrop-filter: blur(30px) saturate(140%);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+  align-items: center;
+  cursor: pointer;
+  overflow: hidden;
+  position: relative;
+}
+[data-theme="light"] .banner { background: rgba(255, 255, 255, 0.75); }
+.banner-title {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.banner-desc {
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.4;
+}
+.banner-visual {
+  width: 80px; height: 70px;
+  background: linear-gradient(135deg, #6CA3FF, #9D7BFF);
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 32px;
+  flex-shrink: 0;
+}
+
+/* ADD WALLET - estilo discreto */
+.add-wallet {
+  margin: 0 16px 16px;
+  padding: 14px;
+  background: var(--surface);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  text-align: center;
+  color: var(--text-2);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: -0.01em;
+}
+.add-wallet:active { background: var(--surface-strong); color: var(--text); }
+
+/* EMPTY STATE */
+.empty {
+  padding: 60px 32px 40px;
+  text-align: center;
+}
+.empty-title {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin-bottom: 8px;
+}
+.empty-desc {
+  font-size: 14px;
+  color: var(--text-2);
+  line-height: 1.5;
+  max-width: 280px;
+  margin: 0 auto 24px;
+}
+.empty-btn {
+  background: var(--text);
+  color: var(--text-inverse) !important;
+  border: none;
+  padding: 14px 28px;
+  border-radius: 100px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  letter-spacing: -0.01em;
+  transition: all 0.15s;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.empty-btn:active { transform: scale(0.96); }
+
+/* TAB BAR */
+.tab-bar {
+  position: fixed;
+  bottom: calc(env(safe-area-inset-bottom) + 14px);
+  left: 50%; transform: translateX(-50%);
+  background: rgba(20, 24, 30, 0.7);
+  backdrop-filter: blur(30px) saturate(160%);
+  -webkit-backdrop-filter: blur(30px) saturate(160%);
+  border: 1px solid var(--border-strong);
+  border-radius: 100px;
+  padding: 6px;
+  display: flex;
+  gap: 2px;
+  z-index: 100;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+}
+[data-theme="light"] .tab-bar { background: rgba(255, 255, 255, 0.8); box-shadow: 0 20px 60px rgba(0,0,0,0.1); }
+.tab {
+  padding: 10px 18px;
+  border-radius: 100px;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  cursor: pointer;
+  color: var(--text-3) !important;
+  border: none;
+  background: transparent;
+  transition: all 0.2s cubic-bezier(0.2, 0.9, 0.3, 1);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.tab.active {
+  background: rgba(var(--accent-rgb), 0.15);
+  color: var(--accent) !important;
+}
+.tab-add {
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  padding: 0;
+  background: var(--text) !important;
+  color: var(--text-inverse) !important;
+  position: relative;
+}
+.tab-add::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  opacity: 0.6;
+  pointer-events: none;
+}
+.tab-add.active { background: var(--text) !important; color: var(--text-inverse) !important; }
+.tab:active { transform: scale(0.92); }
+.tab svg { width: 20px; height: 20px; stroke: currentColor; stroke-width: 2; fill: none; }
+.tab-add svg { width: 22px; height: 22px; stroke-width: 2.2; }
+
+/* NAV (inner) */
+.nav-bar {
+  display: flex; align-items: center;
+  padding: 16px 20px 8px;
+  justify-content: space-between;
+  gap: 12px;
+}
+.nav-back {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: var(--surface);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  color: var(--text) !important;
+}
+.nav-back svg { width: 18px; height: 18px; stroke: currentColor; stroke-width: 2; fill: none; }
+.nav-title {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  text-align: center;
+  flex: 1;
+}
+.nav-action {
+  font-size: 15px;
+  color: var(--text) !important;
+  background: var(--surface);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 100px;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.nav-action.primary { background: var(--text); color: var(--text-inverse) !important; border-color: transparent; }
+.nav-action.danger { color: var(--red) !important; }
+.nav-action:active { opacity: 0.6; }
+
+/* CHIP ROW */
+.chip-row {
+  display: flex; gap: 8px;
+  padding: 0 20px 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.chip-row::-webkit-scrollbar { display: none; }
+.chip {
+  padding: 8px 16px;
+  border-radius: 100px;
+  background: var(--surface);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text-2) !important;
+  cursor: pointer;
+  white-space: nowrap;
+  font-weight: 500;
+  font-family: inherit;
+  transition: all 0.15s;
+  letter-spacing: -0.01em;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.chip.active {
+  background: var(--text);
+  color: var(--text-inverse) !important;
+  border-color: transparent;
+}
+.chip:active { transform: scale(0.96); }
+
+/* FORM FIELDS */
+.field { padding: 0 20px 14px; }
+.field-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+  margin-bottom: 8px;
+  letter-spacing: -0.01em;
+}
+.field-input, .field-select {
+  width: 100%;
+  background: var(--surface);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 16px;
+  color: var(--text);
+  font-size: 15px;
+  outline: none;
+  font-family: inherit;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: all 0.15s;
+}
+.field-input:focus, .field-select:focus {
+  border-color: var(--text-3);
+  background: var(--surface-strong);
+}
+.field-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  padding-right: 40px;
+}
+.field-hint {
+  font-size: 12px;
+  color: var(--text-3);
+  margin-top: 8px;
+  line-height: 1.5;
+}
+
+/* AMOUNT INPUT */
+.amount-wrap {
+  padding: 40px 24px 28px;
+  text-align: center;
+}
+.amount-label {
+  font-size: 13px;
+  color: var(--text-2);
+  margin-bottom: 12px;
+  font-weight: 500;
+}
+.amount-input {
+  font-size: 54px;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  text-align: center;
+  width: 100%;
+  font-variant-numeric: tabular-nums;
+  font-family: inherit;
+}
+.amount-input::placeholder { color: var(--text-4); }
+.amount-sub {
+  font-size: 13px;
+  color: var(--text-3);
+  margin-top: 6px;
+  font-weight: 500;
+}
+
+/* TYPE TOGGLE */
+.type-toggle {
+  display: flex;
+  margin: 0 20px 20px;
+  background: var(--surface);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  padding: 4px;
+}
+.type-btn {
+  flex: 1;
+  padding: 10px;
+  border-radius: 100px;
+  background: transparent;
+  border: none;
+  color: var(--text-2) !important;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+  letter-spacing: -0.01em;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.type-btn.active {
+  background: var(--text);
+  color: var(--text-inverse) !important;
+}
+
+/* CATEGORY GRID */
+.cat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  padding: 0 20px 20px;
+}
+.cat {
+  padding: 12px 6px;
+  border-radius: 14px;
+  background: var(--surface);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.cat.selected {
+  background: rgba(var(--accent-rgb), 0.12);
+  border-color: var(--accent);
+}
+.cat-icon { font-size: 20px; margin-bottom: 6px; }
+.cat-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-2);
+  letter-spacing: -0.01em;
+}
+.cat.selected .cat-label { color: var(--accent); font-weight: 600; }
+.cat.selected .cat-icon { filter: grayscale(0); }
+.cat:active { transform: scale(0.96); }
+
+/* TRANSACTIONS */
+.tx-group-date {
+  font-size: 12px;
+  color: var(--text-3);
+  padding: 16px 20px 8px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.tx {
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 20px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.tx:active { background: var(--surface); }
+.tx-ic {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  background: var(--surface-strong);
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+}
+.tx-body { flex: 1; min-width: 0; }
+.tx-title {
+  font-size: 15px; font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.01em;
+  display: flex; align-items: center; gap: 6px;
+  flex-wrap: wrap;
+}
+.tx-cat {
+  font-size: 13px;
+  color: var(--text-2);
+  margin-top: 2px;
+  font-weight: 400;
+}
+.tx-amt {
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  text-align: right;
+}
+.tx-amt.red { color: var(--red); }
+.tx-amt.green { color: var(--green); }
+.tx-amt-sub {
+  font-size: 12px;
+  color: var(--text-3);
+  margin-top: 2px;
+  font-weight: 500;
+}
+
+/* WALLET DETAIL */
+.w-hero {
+  padding: 32px 24px 24px;
+  text-align: center;
+  position: relative;
+}
+.w-hero-meta {
+  font-size: 13px;
+  color: var(--text-2);
+  margin-bottom: 10px;
+  font-weight: 500;
+}
+.w-hero-caption {
+  font-size: 13px;
+  color: var(--text-2);
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+.w-hero-status {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 100px;
+  background: var(--surface-strong);
+  color: var(--text-2);
+  margin-left: 6px;
+  letter-spacing: -0.01em;
+}
+.w-hero-status.positive { color: var(--accent); background: rgba(var(--accent-rgb), 0.12); }
+.w-hero-status.warning { color: var(--amber); background: rgba(255, 184, 0, 0.12); }
+.w-hero-status.danger { color: var(--red); background: rgba(255, 94, 108, 0.12); }
+
+/* STATS GRID (wallet detail) */
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  padding: 0 16px 20px;
+}
+.stat {
+  padding: 14px 16px;
+  background: rgba(30, 35, 42, 0.55);
+  backdrop-filter: blur(30px) saturate(140%);
+  -webkit-backdrop-filter: blur(30px) saturate(140%);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+[data-theme="light"] .stat { background: rgba(255, 255, 255, 0.75); }
+.stat-label {
+  font-size: 11px;
+  color: var(--text-3);
+  font-weight: 600;
+  margin-bottom: 4px;
+  letter-spacing: -0.01em;
+}
+.stat-val {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.stat-val.income { color: var(--accent); }
+.stat-val.expense { color: var(--red); }
+.stat-val.muted { color: var(--text-3); }
+
+/* SPLIT CARD (fixos/variáveis) */
+.split-card {
+  margin: 0 16px 12px;
+  padding: 16px 20px;
+  background: rgba(30, 35, 42, 0.55);
+  backdrop-filter: blur(30px) saturate(140%);
+  -webkit-backdrop-filter: blur(30px) saturate(140%);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+}
+[data-theme="light"] .split-card { background: rgba(255, 255, 255, 0.75); }
+.split-head {
+  font-size: 13px;
+  color: var(--text-2);
+  font-weight: 600;
+  margin-bottom: 12px;
+  letter-spacing: -0.01em;
+}
+.split-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.split-item { }
+.split-label {
+  font-size: 11px;
+  color: var(--text-3);
+  font-weight: 600;
+  margin-bottom: 4px;
+  letter-spacing: -0.01em;
+}
+.split-val {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.split-val.fixed { color: var(--blue); }
+.split-val.var { color: var(--amber); }
+.split-pct {
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 3px;
+  font-weight: 500;
+}
+
+/* ANALYTICS */
+.analytics-chart {
+  margin: 0 16px 16px;
+  padding: 24px;
+  background: rgba(30, 35, 42, 0.55);
+  backdrop-filter: blur(30px) saturate(140%);
+  -webkit-backdrop-filter: blur(30px) saturate(140%);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  text-align: center;
+}
+[data-theme="light"] .analytics-chart { background: rgba(255, 255, 255, 0.75); }
+.donut-wrap { position: relative; display: inline-block; }
+.donut-center {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+.donut-center-label {
+  font-size: 11px; font-weight: 600;
+  color: var(--text-3);
+  letter-spacing: -0.01em;
+}
+.donut-center-val {
+  font-size: 20px; font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  margin-top: 2px;
+}
+.legend {
+  margin-top: 20px; padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+.legend-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 6px 0;
+}
+.legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.legend-name {
+  flex: 1; text-align: left;
+  font-size: 14px; font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.legend-val {
+  font-size: 13px;
+  color: var(--text-2);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+/* SETTINGS THEME SEG */
+.theme-seg {
+  display: flex; gap: 4px;
+  padding: 4px;
+  margin: 0 16px 16px;
+  background: var(--surface);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+}
+.theme-seg-btn {
+  flex: 1;
+  padding: 10px;
+  border-radius: 100px;
+  background: transparent;
+  border: none;
+  color: var(--text-2) !important;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.theme-seg-btn.active { background: var(--text); color: var(--text-inverse) !important; }
+
+.swatches {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+  margin: 0 16px 16px;
+}
+.sw-group { display: flex; flex-direction: column; gap: 6px; align-items: center; }
+.sw {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 14px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.15s;
+  position: relative;
+  box-shadow: 0 0 0 1px var(--border);
+}
+.sw.active {
+  border-color: var(--text);
+  transform: scale(1.08);
+}
+.sw.active::after {
+  content: '';
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: rgba(0,0,0,0.8);
+  font-weight: 700; font-size: 14px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14' fill='none' stroke='black' stroke-width='2.5'%3E%3Cpath d='M3 7l3 3 5-7'/%3E%3C/svg%3E") center/14px no-repeat;
+}
+.sw-label {
+  font-size: 10px;
+  color: var(--text-3);
+  font-weight: 500;
+}
+
+.custom-color {
+  margin: 0 16px 20px;
+  padding: 14px 18px;
+  background: var(--surface);
+  backdrop-filter: blur(20px);
+  border: 1px dashed var(--border-strong);
+  border-radius: 14px;
+  font-size: 14px;
+  color: var(--text-2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 500;
+}
+.custom-color input[type=color] {
+  width: 32px; height: 32px;
+  border: none; border-radius: 10px;
+  cursor: pointer; background: none; padding: 0; overflow: hidden;
+}
+.custom-color input[type=color]::-webkit-color-swatch-wrapper { padding: 0; }
+.custom-color input[type=color]::-webkit-color-swatch { border: none; border-radius: 10px; }
+
+/* MODAL */
+.modal-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  z-index: 200;
+  display: none;
+  align-items: center; justify-content: center;
+  padding: 20px;
+}
+.modal-backdrop.open { display: flex; }
+.modal {
+  background: var(--surface-raised);
+  backdrop-filter: blur(40px);
+  border: 1px solid var(--border-strong);
+  border-radius: 22px;
+  padding: 28px 24px 24px;
+  max-width: 340px;
+  width: 100%;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+}
+.modal-title {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 8px;
+}
+.modal-desc {
+  font-size: 14px;
+  color: var(--text-2);
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+.modal-actions { display: flex; gap: 8px; margin-top: 20px; }
+.btn {
+  padding: 12px 20px;
+  border-radius: 100px;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  flex: 1;
+  font-family: inherit;
+  letter-spacing: -0.01em;
+  transition: all 0.15s;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: var(--text); color: var(--text-inverse) !important; }
+.btn-secondary { background: var(--surface-strong); color: var(--text) !important; }
+.btn-danger { background: var(--red); color: #FFFFFF !important; }
+
+/* TX DETAIL */
+.detail-card {
+  margin: 12px 16px 20px;
+  background: rgba(30, 35, 42, 0.55);
+  backdrop-filter: blur(30px) saturate(140%);
+  -webkit-backdrop-filter: blur(30px) saturate(140%);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  overflow: hidden;
+}
+[data-theme="light"] .detail-card { background: rgba(255, 255, 255, 0.75); }
+.detail-hero {
+  padding: 40px 24px 28px;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+}
+.detail-hero-ic {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  background: var(--surface-strong);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 28px;
+  margin-bottom: 14px;
+  border: 1px solid var(--border);
+}
+.detail-hero-amt {
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+.detail-hero-title {
+  font-size: 14px;
+  color: var(--text-2);
+  margin-top: 6px;
+  font-weight: 500;
+}
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.detail-row:last-child { border-bottom: none; }
+.detail-label {
+  font-size: 13px;
+  color: var(--text-2);
+  font-weight: 500;
+}
+.detail-val {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* TOAST */
+.toast {
+  position: fixed;
+  bottom: calc(env(safe-area-inset-bottom) + 120px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface-raised);
+  backdrop-filter: blur(30px);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  padding: 12px 22px;
+  border-radius: 100px;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 300;
+  opacity: 0;
+  transition: opacity 0.2s, transform 0.2s;
+  pointer-events: none;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+  letter-spacing: -0.01em;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(-4px); }
+
+.install-hint {
+  margin: 12px 16px 0;
+  padding: 14px 16px;
+  background: rgba(30, 35, 42, 0.55);
+  backdrop-filter: blur(30px);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+.install-hint b { color: var(--text); font-weight: 600; }
+.install-hint .close { float: right; color: var(--text-3); cursor: pointer; padding: 0 0 8px 8px; font-size: 16px; }
+
+/* RATE INPUT (settings) */
+.rate-input {
+  background: var(--surface-strong);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 14px;
+  width: 100px;
+  text-align: right;
+  color: var(--text);
+  font-family: inherit;
+  outline: none;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+/* TILE GROUP (settings) */
+.tile-group {
+  margin: 0 16px 16px;
+  background: rgba(30, 35, 42, 0.55);
+  backdrop-filter: blur(30px) saturate(140%);
+  -webkit-backdrop-filter: blur(30px) saturate(140%);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  overflow: hidden;
+}
+[data-theme="light"] .tile-group { background: rgba(255, 255, 255, 0.75); }
+.tile {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.tile:last-child { border-bottom: none; }
+.tile:active { background: var(--surface); }
+.tile-ic {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: var(--surface-strong);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+}
+.tile-body { flex: 1; min-width: 0; }
+.tile-title {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.tile-sub {
+  font-size: 12px;
+  color: var(--text-3);
+  margin-top: 2px;
+  font-weight: 500;
+}
+.tile-right {
+  font-size: 13px;
+  color: var(--text-2);
+  font-weight: 500;
+}
+</style>
+</head>
+<body style="color:#FFFFFF;">
+<script>
+  // Garante data-theme no body assim que existe (antes de qualquer render)
+  (function() {
+    const theme = document.documentElement.getAttribute('data-theme') || 'dark';
+    document.body.setAttribute('data-theme', theme);
+  })();
+</script>
+
+<!-- HOME -->
+<div class="screen active" id="screen-home">
+  <div class="topbar">
+    <div class="logo-mark">ledger</div>
+    <div class="spacer"></div>
+    <div class="icon-btn" onclick="showScreen('screen-analytics')">
+      <svg viewBox="0 0 24 24"><path d="M3 3v18h18M8 17V9m5 8V5m5 12v-6"/></svg>
+    </div>
+    <div class="icon-btn" onclick="showScreen('screen-settings')">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3m10-10h-3M5 12H2m15.5-7.5l-2.1 2.1M8.6 15.4l-2.1 2.1m0-13l2.1 2.1m8.8 8.8l2.1 2.1"/></svg>
+    </div>
+  </div>
+
+  <div id="install-hint-container"></div>
+
+  <div id="home-content"></div>
+</div>
+
+<!-- WALLET DETAIL -->
+<div class="screen" id="screen-wallet">
+  <div class="nav-bar">
+    <div class="nav-back" onclick="showScreen('screen-home')">
+      <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+    </div>
+    <span class="nav-title" id="w-nav-title">Carteira</span>
+    <button class="nav-action" onclick="editCurrentWallet()">Editar</button>
+  </div>
+
+  <div class="w-hero">
+    <div class="w-hero-meta">
+      <span id="w-period">—</span> · <span id="w-code">—</span>
+      <span id="w-status" class="w-hero-status" style="display:none;">—</span>
+    </div>
+    <div class="w-hero-caption" id="w-caption">Sobra do mês</div>
+    <div class="hero-value">
+      <span id="w-val-sign"></span><span class="curr" id="w-val-sym">€</span><span id="w-val-int">0</span><span class="cents" id="w-val-cents">,00</span>
+    </div>
+  </div>
+
+  <div id="w-bar-wrap" class="hero-bar-wrap" style="display:none; margin-bottom: 20px;">
+    <div class="hero-bar-track"><div class="hero-bar-fill" id="w-bar-fill" style="width:0%;"></div></div>
+    <div class="hero-bar-meta">
+      <span id="w-bar-label">Consumido da renda</span>
+      <span class="pct" id="w-bar-pct">0%</span>
+    </div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat">
+      <div class="stat-label">Renda</div>
+      <div class="stat-val income" id="w-stat-income">—</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Gastos</div>
+      <div class="stat-val expense" id="w-stat-expenses">—</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Orçamento</div>
+      <div class="stat-val muted" id="w-stat-budget">—</div>
+    </div>
+  </div>
+
+  <div class="split-card">
+    <div class="split-head">Fixos vs Variáveis</div>
+    <div class="split-body">
+      <div class="split-item">
+        <div class="split-label">Fixos</div>
+        <div class="split-val fixed" id="w-fixed">—</div>
+        <div class="split-pct" id="w-fixed-pct">—</div>
+      </div>
+      <div class="split-item">
+        <div class="split-label">Variáveis</div>
+        <div class="split-val var" id="w-var">—</div>
+        <div class="split-pct" id="w-var-pct">—</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Transações <span class="count" id="w-tx-total-count">0</span></div>
+  </div>
+
+  <div class="chip-row" id="w-filter-chips">
+    <div class="chip active" data-filter="all" onclick="filterWalletTx(this,'all')">Todos</div>
+    <div class="chip" data-filter="fixed" onclick="filterWalletTx(this,'fixed')">Fixos</div>
+    <div class="chip" data-filter="variable" onclick="filterWalletTx(this,'variable')">Variáveis</div>
+    <div class="chip" data-filter="income" onclick="filterWalletTx(this,'income')">Receitas</div>
+  </div>
+
+  <div id="w-tx-container"></div>
+</div>
+
+<!-- ADD TX -->
+<div class="screen" id="screen-add">
+  <div class="nav-bar">
+    <button class="nav-action" onclick="cancelAdd()">Cancelar</button>
+    <span class="nav-title">Nova transação</span>
+    <button class="nav-action primary" onclick="saveTransaction()">Salvar</button>
+  </div>
+
+  <div class="field" style="padding-top: 8px;">
+    <div class="field-label">Carteira</div>
+    <select class="field-select" id="tx-wallet"></select>
+  </div>
+
+  <div class="type-toggle">
+    <button class="type-btn active" data-type="variable" onclick="setType(this,'variable')">Gasto</button>
+    <button class="type-btn" data-type="income" onclick="setType(this,'income')">Receita</button>
+    <button class="type-btn" data-type="fixed" onclick="setType(this,'fixed')">Fixo</button>
+  </div>
+
+  <div class="amount-wrap">
+    <div class="amount-label">Valor · <span id="tx-currency-label">—</span></div>
+    <input class="amount-input" placeholder="0,00" type="text" inputmode="decimal" id="tx-amount" oninput="formatAmountInput(this)" />
+  </div>
+
+  <div class="field">
+    <div class="field-label">Descrição</div>
+    <input class="field-input" placeholder="Ex: Tesco, Aluguel, Spotify..." id="tx-desc" />
+  </div>
+
+  <div class="field">
+    <div class="field-label">Categoria</div>
+  </div>
+  <div class="cat-grid" id="tx-cat-grid"></div>
+
+  <div class="field">
+    <div class="field-label">Data</div>
+    <input class="field-input" type="date" id="tx-date" />
+  </div>
+</div>
+
+<!-- ANALYTICS -->
+<div class="screen" id="screen-analytics">
+  <div class="nav-bar">
+    <div class="nav-back" onclick="showScreen('screen-home')">
+      <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+    </div>
+    <span class="nav-title">Análises</span>
+    <span></span>
+  </div>
+
+  <div class="chip-row" id="analytics-wallet-chips" style="padding-top: 8px;"></div>
+
+  <div style="padding: 0 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px;">
+    <div class="stat">
+      <div class="stat-label">Gasto</div>
+      <div class="stat-val expense" style="font-size: 20px;" id="a-total">—</div>
+      <div class="tile-sub" id="a-period" style="margin-top: 4px;">—</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Saldo</div>
+      <div class="stat-val" style="font-size: 20px;" id="a-balance">—</div>
+      <div class="tile-sub" id="a-balance-status" style="margin-top: 4px;">—</div>
+    </div>
+  </div>
+
+  <div class="analytics-chart" id="a-chart-wrap">
+    <div class="empty" style="padding: 32px 0 12px;">
+      <div class="empty-title" style="font-size: 17px;">Sem dados</div>
+      <div class="empty-desc" style="font-size: 13px;">Adicione transações para ver análises</div>
+    </div>
+  </div>
+
+  <div class="section" id="a-cat-head" style="display:none;">
+    <div class="section-title">Por categoria</div>
+  </div>
+  <div class="card-group" id="a-cat-list" style="display:none;"></div>
+</div>
+
+<!-- SETTINGS -->
+<div class="screen" id="screen-settings">
+  <div class="nav-bar">
+    <div class="nav-back" onclick="showScreen('screen-home')">
+      <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+    </div>
+    <span class="nav-title">Ajustes</span>
+    <span></span>
+  </div>
+
+  <div class="section"><div class="section-title">Moeda principal</div></div>
+  <div class="tile-group">
+    <div class="tile" onclick="showScreen('screen-primary-curr')">
+      <div class="tile-ic" id="primary-curr-flag">🇪🇺</div>
+      <div class="tile-body">
+        <div class="tile-title" id="primary-curr-title">EUR — Euro</div>
+        <div class="tile-sub">Moeda de referência</div>
+      </div>
+      <div class="tile-right">›</div>
+    </div>
+  </div>
+
+  <div class="section"><div class="section-title">Tema</div></div>
+  <div class="theme-seg" id="theme-seg">
+    <button class="theme-seg-btn" data-theme="dark" onclick="setTheme('dark')">Escuro</button>
+    <button class="theme-seg-btn" data-theme="light" onclick="setTheme('light')">Claro</button>
+    <button class="theme-seg-btn" data-theme="auto" onclick="setTheme('auto')">Auto</button>
+  </div>
+
+  <div class="section"><div class="section-title">Cor de destaque</div></div>
+  <div class="swatches" id="color-swatches"></div>
+  <div class="custom-color">
+    <span>Cor personalizada</span>
+    <input type="color" id="custom-color-input" value="#FFFFFF" />
+  </div>
+
+  <div class="section"><div class="section-title">Dados</div></div>
+  <div class="tile-group">
+    <div class="tile" onclick="exportCSV()">
+      <div class="tile-ic">↗</div>
+      <div class="tile-body">
+        <div class="tile-title">Exportar CSV</div>
+        <div class="tile-sub">Baixar todas as transações</div>
+      </div>
+      <div class="tile-right">›</div>
+    </div>
+    <div class="tile" onclick="confirmClearAll()">
+      <div class="tile-ic" style="color: var(--red);">⊗</div>
+      <div class="tile-body">
+        <div class="tile-title" style="color: var(--red);">Limpar todos os dados</div>
+        <div class="tile-sub">Ação irreversível</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="padding: 20px 24px 16px; font-size: 12px; color: var(--text-3); text-align: center; line-height: 1.8; font-weight: 500;">
+    Ledger · v3.3<br/>
+    Dados salvos localmente neste dispositivo
+  </div>
+</div>
+
+<!-- PRIMARY CURRENCY -->
+<div class="screen" id="screen-primary-curr">
+  <div class="nav-bar">
+    <div class="nav-back" onclick="showScreen('screen-settings')">
+      <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+    </div>
+    <span class="nav-title">Moeda</span>
+    <span></span>
+  </div>
+  <div style="padding: 8px 24px 16px; font-size: 13px; color: var(--text-2); line-height: 1.5;">
+    Moeda exibida no total do mês na tela inicial. Apenas display — não converte valores.
+  </div>
+  <div class="tile-group" id="primary-curr-options"></div>
+</div>
+
+<!-- TX DETAIL -->
+<div class="screen" id="screen-tx-detail">
+  <div class="nav-bar">
+    <div class="nav-back" onclick="backFromTxDetail()">
+      <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+    </div>
+    <span class="nav-title">Detalhes</span>
+    <button class="nav-action danger" onclick="confirmDeleteTx()">Excluir</button>
+  </div>
+  <div class="detail-card">
+    <div class="detail-hero">
+      <div class="detail-hero-ic" id="d-ic">💰</div>
+      <div class="detail-hero-amt" id="d-amt">—</div>
+      <div class="detail-hero-title" id="d-title">—</div>
+    </div>
+    <div class="detail-row"><span class="detail-label">Data</span><span class="detail-val" id="d-date">—</span></div>
+    <div class="detail-row"><span class="detail-label">Categoria</span><span class="detail-val" id="d-cat">—</span></div>
+    <div class="detail-row"><span class="detail-label">Tipo</span><span class="detail-val" id="d-type">—</span></div>
+    <div class="detail-row"><span class="detail-label">Carteira</span><span class="detail-val" id="d-wallet">—</span></div>
+  </div>
+</div>
+
+<!-- WALLET EDIT -->
+<div class="screen" id="screen-wallet-edit">
+  <div class="nav-bar">
+    <button class="nav-action" onclick="cancelWalletEdit()">Cancelar</button>
+    <span class="nav-title" id="we-title">Nova carteira</span>
+    <button class="nav-action primary" onclick="saveWallet()">Salvar</button>
+  </div>
+  <div class="field" style="padding-top: 8px;">
+    <div class="field-label">Nome</div>
+    <input class="field-input" placeholder="Ex: Euro, Real, Casa, Viagem..." id="we-name" />
+  </div>
+  <div class="field">
+    <div class="field-label">Moeda</div>
+    <select class="field-select" id="we-currency"></select>
+  </div>
+  <div class="field">
+    <div class="field-label">Emoji / Ícone</div>
+    <input class="field-input" placeholder="🇪🇺" id="we-icon" maxlength="4" />
+  </div>
+  <div class="field">
+    <div class="field-label">Renda mensal (opcional)</div>
+    <input class="field-input" placeholder="0,00" type="text" inputmode="decimal" id="we-income" />
+    <div class="field-hint">
+      Renda recorrente nesta moeda. O app calcula quanto sobra automaticamente.
+    </div>
+  </div>
+  <div class="field">
+    <div class="field-label">Orçamento mensal (opcional)</div>
+    <input class="field-input" placeholder="0,00" type="text" inputmode="decimal" id="we-budget" />
+  </div>
+  <div id="we-delete-wrap" style="display:none;">
+    <div class="section"><div class="section-title" style="color: var(--red);">Zona de perigo</div></div>
+    <div class="tile-group">
+      <div class="tile" onclick="confirmDeleteWallet()">
+        <div class="tile-ic" style="color: var(--red);">⊗</div>
+        <div class="tile-body">
+          <div class="tile-title" style="color: var(--red);">Excluir carteira</div>
+          <div class="tile-sub">Remove todas as transações</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB BAR -->
+<div class="tab-bar">
+  <button class="tab active" id="tab-home" onclick="showScreen('screen-home')">
+    <svg viewBox="0 0 24 24"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-7h-6v7H4a1 1 0 0 1-1-1V9.5z"/></svg>
+    <span>Home</span>
+  </button>
+  <button class="tab tab-add" id="tab-add" onclick="openAdd()">
+    <svg viewBox="0 0 24 24"><path d="M12 5v14m-7-7h14"/></svg>
+  </button>
+  <button class="tab" id="tab-analytics" onclick="showScreen('screen-analytics')">
+    <svg viewBox="0 0 24 24"><path d="M3 3v18h18M8 17V9m5 8V5m5 12v-6"/></svg>
+    <span>Análises</span>
+  </button>
+</div>
+
+<!-- MODAL -->
+<div class="modal-backdrop" id="modal">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">Confirmar</div>
+    <div class="modal-desc" id="modal-desc">—</div>
+    <div class="modal-actions" id="modal-actions"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast">—</div>
+
+<script>
+// ============================================================
+// DATA LAYER
+// ============================================================
+const DB_KEY = 'ledger_v1';
+const CURRENCIES = {
+  EUR: { name: 'Euro', symbol: '€', flag: '🇪🇺', locale: 'de-DE' },
+  BRL: { name: 'Real', symbol: 'R$', flag: '🇧🇷', locale: 'pt-BR' },
+  USD: { name: 'Dólar', symbol: '$', flag: '🇺🇸', locale: 'en-US' },
+  GBP: { name: 'Libra', symbol: '£', flag: '🇬🇧', locale: 'en-GB' },
+  JPY: { name: 'Iene', symbol: '¥', flag: '🇯🇵', locale: 'ja-JP' },
+  CHF: { name: 'Franco', symbol: 'CHF', flag: '🇨🇭', locale: 'de-CH' },
+  CAD: { name: 'Dólar CA', symbol: 'C$', flag: '🇨🇦', locale: 'en-CA' },
+  AUD: { name: 'Dólar AU', symbol: 'A$', flag: '🇦🇺', locale: 'en-AU' },
+  ARS: { name: 'Peso AR', symbol: '$', flag: '🇦🇷', locale: 'es-AR' },
+  CLP: { name: 'Peso CL', symbol: '$', flag: '🇨🇱', locale: 'es-CL' },
+};
+const DEFAULT_CATS = [
+  { id: 'food',      name: 'Alimentação', icon: '🛒' },
+  { id: 'home',      name: 'Moradia',     icon: '🏠' },
+  { id: 'transport', name: 'Transporte',  icon: '🚌' },
+  { id: 'leisure',   name: 'Lazer',       icon: '🎬' },
+  { id: 'health',    name: 'Saúde',       icon: '💊' },
+  { id: 'subs',      name: 'Assinaturas', icon: '📱' },
+  { id: 'clothes',   name: 'Vestuário',   icon: '👗' },
+  { id: 'other',     name: 'Outros',      icon: '📦' },
+];
+const CHART_COLORS = ['#6CA3FF', '#4DD896', '#FFB800', '#FF5E6C', '#9D7BFF', '#14E3C3', '#FF8D5A', '#C5FF3D'];
+const PALETTES = [
+  { hex: '#FFFFFF', name: 'branco' },
+  { hex: '#4DD896', name: 'verde'  },
+  { hex: '#6CA3FF', name: 'azul'   },
+  { hex: '#FF5E6C', name: 'vermelho' },
+  { hex: '#9D7BFF', name: 'roxo'   },
+  { hex: '#FFB800', name: 'ouro'   },
+  { hex: '#14E3C3', name: 'teal'   },
+  { hex: '#FF8D5A', name: 'laranja'},
+  { hex: '#FF3DD8', name: 'rosa'   },
+  { hex: '#C5FF3D', name: 'lima'   },
+  { hex: '#00F0B5', name: 'neon'   },
+  { hex: '#E8B94A', name: 'âmbar'  },
+];
+
+function hexToRgb(hex) {
+  const m = hex.replace('#','').match(/.{2}/g).map(h => parseInt(h, 16));
+  return `${m[0]}, ${m[1]}, ${m[2]}`;
+}
+
+function loadDB() {
+  try {
+    const raw = localStorage.getItem(DB_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  return {
+    wallets: [],
+    transactions: [],
+    categories: DEFAULT_CATS,
+    primaryCurrency: 'EUR',
+    theme: 'dark',
+    accentColor: '#FFFFFF',
+    hideInstallHint: false,
+    firstRun: true,
+  };
+}
+let db = loadDB();
+function saveDB() { localStorage.setItem(DB_KEY, JSON.stringify(db)); }
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+
+// ============================================================
+// STATE
+// ============================================================
+let currentWalletId = null;
+let currentTxId = null;
+let editingWalletId = null;
+let selectedCategoryId = 'food';
+let selectedType = 'variable';
+let walletTxFilter = 'all';
+let analyticsWalletId = 'all';
+let returnToScreen = 'screen-home';
+
+// ============================================================
+// FORMAT
+// ============================================================
+function fmt(amount, currency) {
+  const c = CURRENCIES[currency] || CURRENCIES.EUR;
+  try {
+    return new Intl.NumberFormat(c.locale, {
+      style: 'currency', currency: currency,
+      minimumFractionDigits: 2, maximumFractionDigits: 2
+    }).format(amount);
+  } catch(e) {
+    return c.symbol + ' ' + amount.toFixed(2);
+  }
+}
+function monthName(d) {
+  const m = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  return m[d.getMonth()];
+}
+function monthNameCap(d) {
+  const m = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  return m[d.getMonth()];
+}
+function monthNameShort(d) {
+  const m = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  return m[d.getMonth()];
+}
+function monthKey(date) {
+  const d = new Date(date);
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+}
+function currentMonthKey() { return monthKey(new Date()); }
+function parseAmount(str) {
+  if (!str) return 0;
+  const cleaned = String(str).replace(/[^\d.,\-]/g,'').replace(',', '.');
+  const n = parseFloat(cleaned);
+  return isNaN(n) ? 0 : n;
+}
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]));
+}
+
+// ============================================================
+// NAV
+// ============================================================
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  const tabMap = { 'screen-home': 'tab-home', 'screen-analytics': 'tab-analytics' };
+  if (tabMap[id]) document.getElementById(tabMap[id]).classList.add('active');
+  window.scrollTo(0, 0);
+  if (id === 'screen-home') renderHome();
+  if (id === 'screen-analytics') renderAnalytics();
+  if (id === 'screen-settings') renderSettings();
+  if (id === 'screen-primary-curr') renderPrimaryCurrOptions();
+}
+
+// ============================================================
+// RENDER HOME
+// ============================================================
+function renderHome() {
+  renderInstallHint();
+  const content = document.getElementById('home-content');
+  const primCurr = db.primaryCurrency;
+  const now = new Date();
+
+  if (db.wallets.length === 0) {
+    content.innerHTML = `
+      <div class="hero">
+        <div class="hero-caption">Bem-vindo</div>
+        <div class="hero-value">
+          <span class="curr">${CURRENCIES[primCurr].symbol}</span>0<span class="cents">,00</span>
+        </div>
+      </div>
+      <div class="empty">
+        <div class="empty-title">Comece sua jornada</div>
+        <div class="empty-desc">Crie sua primeira carteira para começar a controlar seus gastos. Uma por moeda, ou por contexto (casa, viagem, reserva).</div>
+        <button class="empty-btn" onclick="openAddWallet()">＋ Criar carteira</button>
+      </div>`;
+    return;
+  }
+
+  // Cálculos
+  const mk = currentMonthKey();
+  const monthTx = db.transactions.filter(t => monthKey(t.date) === mk);
+  const primWallets = db.wallets.filter(w => w.currency === primCurr);
+  const primIds = new Set(primWallets.map(w => w.id));
+  const primExpenses = monthTx.filter(t => primIds.has(t.walletId) && t.type !== 'income').reduce((s,t) => s+t.amount, 0);
+  const primConfigIncome = primWallets.reduce((s,w) => s + (w.monthlyIncome > 0 ? w.monthlyIncome : 0), 0);
+  const primMonthIncome = monthTx.filter(t => primIds.has(t.walletId) && t.type === 'income').reduce((s,t) => s+t.amount, 0);
+  const primTotalIncome = primConfigIncome + primMonthIncome;
+  const primRemaining = primTotalIncome - primExpenses;
+  const hasIncome = primTotalIncome > 0;
+
+  // Hero value
+  const displayValue = hasIncome ? primRemaining : primExpenses;
+  const isNeg = hasIncome && displayValue < 0;
+  const abs = Math.abs(displayValue);
+  const intPart = Math.floor(abs);
+  const centPart = Math.round((abs - intPart) * 100).toString().padStart(2,'0');
+  const currSym = CURRENCIES[primCurr].symbol;
+  const label = hasIncome ? (displayValue >= 0 ? 'Sobra do mês' : 'Mês estourou') : 'Gasto do mês';
+
+  // Barra
+  let barHtml = '';
+  if (hasIncome) {
+    const pct = Math.min(Math.round((primExpenses / primTotalIncome) * 100), 200);
+    const barClass = pct >= 100 ? 'danger' : pct >= 80 ? 'warning' : '';
+    barHtml = `
+      <div class="hero-bar-wrap">
+        <div class="hero-bar-track"><div class="hero-bar-fill ${barClass}" style="width:${Math.min(pct,100)}%;"></div></div>
+        <div class="hero-bar-meta">
+          <span>Consumido da renda</span>
+          <span class="pct">${pct}%</span>
+        </div>
+      </div>`;
+  }
+
+  // Wallets
+  const walletHtml = db.wallets.map((w, idx) => {
+    const wTx = monthTx.filter(t => t.walletId === w.id);
+    const expenses = wTx.filter(t => t.type !== 'income').reduce((s,t) => s+t.amount, 0);
+    const monthIncomeFromTx = wTx.filter(t => t.type === 'income').reduce((s,t) => s+t.amount, 0);
+    const baseIncome = w.monthlyIncome > 0 ? w.monthlyIncome : 0;
+    const totalIncome = baseIncome + monthIncomeFromTx;
+    const remaining = totalIncome - expenses;
+    const hasWIncome = totalIncome > 0;
+    const c = CURRENCIES[w.currency];
+    const isPrimary = idx === 0;
+
+    let subText = '';
+    let subClass = '';
+    if (hasWIncome) {
+      if (remaining >= 0) {
+        subText = fmt(remaining, w.currency) + ' restam';
+        const pct = (expenses / totalIncome);
+        subClass = pct >= 0.8 ? 'warning' : 'positive';
+      } else {
+        subText = fmt(Math.abs(remaining), w.currency) + ' acima';
+        subClass = 'danger';
+      }
+    } else if (w.budget > 0) {
+      const pct = Math.round((expenses / w.budget) * 100);
+      subText = pct + '% do orçamento';
+      subClass = pct >= 100 ? 'danger' : pct >= 80 ? 'warning' : '';
+    } else {
+      subText = wTx.length + (wTx.length === 1 ? ' transação' : ' transações');
+    }
+
+    return `
+      <div class="wallet" onclick="openWallet('${w.id}')">
+        <div class="wallet-icon">${w.icon || c.flag}</div>
+        <div class="wallet-info">
+          <div class="wallet-name">
+            ${escapeHtml(w.name)}
+            <span class="pill-small">${w.currency}</span>
+            ${isPrimary ? '<span class="pill-small pill-main">Main</span>' : ''}
+          </div>
+          <div class="wallet-meta">${monthNameShort(now)} · ${wTx.length} ${wTx.length === 1 ? 'transação' : 'transações'}</div>
+        </div>
+        <div style="text-align: right;">
+          <div class="wallet-val">${fmt(expenses, w.currency)}</div>
+          <div class="wallet-sub ${subClass}">${subText}</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  // Breakdown
+  const primFixed = monthTx.filter(t => primIds.has(t.walletId) && t.type === 'fixed').reduce((s,t) => s+t.amount, 0);
+  const primVar = monthTx.filter(t => primIds.has(t.walletId) && t.type === 'variable').reduce((s,t) => s+t.amount, 0);
+  const primTotalExp = primFixed + primVar;
+
+  let breakdownHtml = '';
+  if (primTotalExp > 0) {
+    breakdownHtml = `
+      <div class="section"><div class="section-title">Breakdown</div></div>
+      <div class="split-card">
+        <div class="split-head">Distribuição · ${monthNameCap(now)}</div>
+        <div class="split-body">
+          <div class="split-item">
+            <div class="split-label">Fixos</div>
+            <div class="split-val fixed">${fmt(primFixed, primCurr)}</div>
+            <div class="split-pct">${Math.round((primFixed/primTotalExp)*100)}% do total</div>
+          </div>
+          <div class="split-item">
+            <div class="split-label">Variáveis</div>
+            <div class="split-val var">${fmt(primVar, primCurr)}</div>
+            <div class="split-pct">${Math.round((primVar/primTotalExp)*100)}% do total</div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  // Recent transactions
+  const recentTx = [...db.transactions].sort((a,b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt)).slice(0, 3);
+  let recentHtml = '';
+  if (recentTx.length > 0) {
+    const items = recentTx.map(t => {
+      const w = db.wallets.find(x => x.id === t.walletId);
+      const cat = db.categories.find(c => c.id === t.categoryId) || { icon: '💰', name: '—' };
+      if (!w) return '';
+      const amtClass = t.type === 'income' ? 'green' : 'red';
+      const sign = t.type === 'income' ? '+' : '-';
+      const dateStr = formatTxDate(t.date);
+      return `
+        <div class="tx" onclick="openTxDetail('${t.id}')">
+          <div class="tx-ic">${cat.icon}</div>
+          <div class="tx-body">
+            <div class="tx-title">${escapeHtml(t.description || cat.name)}</div>
+            <div class="tx-cat">${cat.name} · ${dateStr}</div>
+          </div>
+          <div style="text-align: right;">
+            <div class="tx-amt ${amtClass}">${sign}${fmt(t.amount, w.currency).replace('-','').replace('+','')}</div>
+          </div>
+        </div>`;
+    }).join('');
+    recentHtml = `
+      <div class="section"><div class="section-title">Recentes</div></div>
+      <div class="card-group" style="padding: 4px 0;">
+        ${items}
+      </div>`;
+  }
+
+  content.innerHTML = `
+    <div class="hero">
+      <div class="hero-caption">${label} · ${primCurr}</div>
+      <div class="hero-value">
+        ${isNeg ? '<span class="sign-neg">-</span>' : ''}<span class="curr">${currSym}</span>${intPart.toLocaleString('pt-BR')}<span class="cents">,${centPart}</span>
+      </div>
+      <button class="hero-pill" onclick="scrollToWallets()">
+        Carteiras
+        <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+    </div>
+    ${barHtml}
+
+    <div class="section">
+      <div class="section-title">Carteiras <span class="count">${db.wallets.length}</span></div>
+      <button class="section-action" onclick="openAddWallet()">＋ Nova</button>
+    </div>
+
+    <div class="card-group">
+      ${walletHtml}
+    </div>
+
+    ${breakdownHtml}
+    ${recentHtml}
+  `;
+}
+
+function scrollToWallets() {
+  const el = document.querySelector('#home-content .section');
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function formatTxDate(dStr) {
+  const today = new Date().toISOString().slice(0,10);
+  const yest = new Date(Date.now()-86400000).toISOString().slice(0,10);
+  if (dStr === today) return 'Hoje';
+  if (dStr === yest) return 'Ontem';
+  const d = new Date(dStr);
+  return d.getDate() + ' ' + monthNameShort(d);
+}
+
+function renderInstallHint() {
+  const container = document.getElementById('install-hint-container');
+  if (db.hideInstallHint) { container.innerHTML = ''; return; }
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+  if (isStandalone) { container.innerHTML = ''; return; }
+  container.innerHTML = `
+    <div class="install-hint">
+      <span class="close" onclick="hideInstallHint()">×</span>
+      <b>Instalar como app</b><br/>
+      ${isIOS
+        ? 'Toque em <b>Compartilhar</b> ↗ no Safari, depois <b>Adicionar à Tela Inicial</b>.'
+        : 'Menu do navegador → <b>Adicionar à tela inicial</b>.'}
+    </div>`;
+}
+function hideInstallHint() { db.hideInstallHint = true; saveDB(); document.getElementById('install-hint-container').innerHTML = ''; }
+
+// ============================================================
+// WALLET DETAIL
+// ============================================================
+function openWallet(id) {
+  currentWalletId = id;
+  renderWalletDetail();
+  showScreen('screen-wallet');
+}
+
+function renderWalletDetail() {
+  const w = db.wallets.find(x => x.id === currentWalletId);
+  if (!w) { showScreen('screen-home'); return; }
+  const c = CURRENCIES[w.currency];
+  const now = new Date();
+  const mk = currentMonthKey();
+  const monthTx = db.transactions.filter(t => t.walletId === w.id && monthKey(t.date) === mk);
+  const expenses = monthTx.filter(t => t.type !== 'income').reduce((s,t) => s+t.amount, 0);
+  const fixed = monthTx.filter(t => t.type === 'fixed').reduce((s,t) => s+t.amount, 0);
+  const variable = monthTx.filter(t => t.type === 'variable').reduce((s,t) => s+t.amount, 0);
+  const monthIncome = monthTx.filter(t => t.type === 'income').reduce((s,t) => s+t.amount, 0);
+  const baseIncome = w.monthlyIncome > 0 ? w.monthlyIncome : 0;
+  const totalIncome = baseIncome + monthIncome;
+  const remaining = totalIncome - expenses;
+  const hasIncome = totalIncome > 0;
+
+  document.getElementById('w-nav-title').textContent = w.name;
+  document.getElementById('w-code').textContent = w.currency;
+  document.getElementById('w-period').textContent = monthNameCap(now);
+
+  // Hero
+  const val = hasIncome ? remaining : expenses;
+  const isNeg = hasIncome && val < 0;
+  const abs = Math.abs(val);
+  const intPart = Math.floor(abs);
+  const centPart = Math.round((abs - intPart) * 100).toString().padStart(2,'0');
+  document.getElementById('w-caption').textContent = hasIncome ? (val >= 0 ? 'Sobra do mês' : 'Mês estourou') : 'Gasto do mês';
+  document.getElementById('w-val-sign').innerHTML = isNeg ? '<span class="sign-neg">-</span>' : '';
+  document.getElementById('w-val-sym').textContent = c.symbol;
+  document.getElementById('w-val-int').textContent = intPart.toLocaleString('pt-BR');
+  document.getElementById('w-val-cents').textContent = ',' + centPart;
+
+  // Status
+  const statusEl = document.getElementById('w-status');
+  if (hasIncome) {
+    statusEl.style.display = '';
+    if (val < 0) { statusEl.textContent = 'Acima'; statusEl.className = 'w-hero-status danger'; }
+    else if (expenses / totalIncome >= 0.8) { statusEl.textContent = 'Atenção'; statusEl.className = 'w-hero-status warning'; }
+    else { statusEl.textContent = 'OK'; statusEl.className = 'w-hero-status positive'; }
+  } else {
+    statusEl.style.display = 'none';
+  }
+
+  // Bar
+  const barWrap = document.getElementById('w-bar-wrap');
+  if (hasIncome) {
+    barWrap.style.display = '';
+    const pct = Math.min(Math.round((expenses / totalIncome) * 100), 200);
+    document.getElementById('w-bar-label').textContent = 'Consumido da renda';
+    document.getElementById('w-bar-pct').textContent = pct + '%';
+    const fill = document.getElementById('w-bar-fill');
+    fill.style.width = Math.min(pct, 100) + '%';
+    fill.className = 'hero-bar-fill' + (pct >= 100 ? ' danger' : pct >= 80 ? ' warning' : '');
+  } else if (w.budget > 0) {
+    barWrap.style.display = '';
+    const pct = Math.min(Math.round((expenses / w.budget) * 100), 200);
+    document.getElementById('w-bar-label').textContent = 'Consumido do orçamento';
+    document.getElementById('w-bar-pct').textContent = pct + '%';
+    const fill = document.getElementById('w-bar-fill');
+    fill.style.width = Math.min(pct, 100) + '%';
+    fill.className = 'hero-bar-fill' + (pct >= 100 ? ' danger' : pct >= 80 ? ' warning' : '');
+  } else {
+    barWrap.style.display = 'none';
+  }
+
+  document.getElementById('w-stat-income').textContent = hasIncome ? fmt(totalIncome, w.currency) : '—';
+  document.getElementById('w-stat-expenses').textContent = fmt(expenses, w.currency);
+  document.getElementById('w-stat-budget').textContent = w.budget > 0 ? fmt(w.budget, w.currency) : '—';
+
+  const totalExp = fixed + variable;
+  document.getElementById('w-fixed').textContent = fmt(fixed, w.currency);
+  document.getElementById('w-var').textContent = fmt(variable, w.currency);
+  document.getElementById('w-fixed-pct').textContent = totalExp > 0 ? Math.round((fixed/totalExp)*100) + '% do total' : '—';
+  document.getElementById('w-var-pct').textContent = totalExp > 0 ? Math.round((variable/totalExp)*100) + '% do total' : '—';
+  document.getElementById('w-tx-total-count').textContent = monthTx.length;
+
+  renderWalletTx();
+}
+
+function renderWalletTx() {
+  const w = db.wallets.find(x => x.id === currentWalletId);
+  if (!w) return;
+  let txs = db.transactions.filter(t => t.walletId === w.id);
+  if (walletTxFilter !== 'all') txs = txs.filter(t => t.type === walletTxFilter);
+  txs.sort((a,b) => b.date.localeCompare(a.date));
+
+  const container = document.getElementById('w-tx-container');
+  if (txs.length === 0) {
+    container.innerHTML = `
+      <div class="empty" style="padding: 32px 32px 20px;">
+        <div class="empty-title" style="font-size: 17px;">Sem transações</div>
+        <div class="empty-desc" style="font-size: 13px;">Adicione tocando no ＋</div>
+      </div>`;
+    return;
+  }
+
+  const groups = {};
+  txs.forEach(t => { (groups[t.date] = groups[t.date] || []).push(t); });
+  const dateKeys = Object.keys(groups).sort().reverse();
+
+  container.innerHTML = dateKeys.map(dk => {
+    const label = formatTxDate(dk);
+    const items = groups[dk].map(t => {
+      const cat = db.categories.find(c => c.id === t.categoryId) || { icon: '💰', name: '—' };
+      const tagClass = t.type === 'fixed' ? 'pill-fix' : t.type === 'variable' ? 'pill-var' : '';
+      const tagText = t.type === 'fixed' ? 'FIX' : t.type === 'variable' ? 'VAR' : '';
+      const amtClass = t.type === 'income' ? 'green' : 'red';
+      const sign = t.type === 'income' ? '+' : '-';
+      return `
+        <div class="tx" onclick="openTxDetail('${t.id}')">
+          <div class="tx-ic">${cat.icon}</div>
+          <div class="tx-body">
+            <div class="tx-title">${escapeHtml(t.description || cat.name)} ${tagText ? `<span class="pill-small ${tagClass}">${tagText}</span>` : ''}</div>
+            <div class="tx-cat">${cat.name}</div>
+          </div>
+          <div class="tx-amt ${amtClass}">${sign}${fmt(t.amount, w.currency).replace('-','').replace('+','')}</div>
+        </div>`;
+    }).join('');
+    return `<div><div class="tx-group-date">${label}</div>${items}</div>`;
+  }).join('');
+}
+
+function filterWalletTx(el, filter) {
+  document.querySelectorAll('#w-filter-chips .chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  walletTxFilter = filter;
+  renderWalletTx();
+}
+
+// ============================================================
+// TX DETAIL
+// ============================================================
+function openTxDetail(txId) {
+  currentTxId = txId;
+  returnToScreen = document.getElementById('screen-wallet').classList.contains('active') ? 'screen-wallet' : 'screen-home';
+  const t = db.transactions.find(x => x.id === txId);
+  if (!t) return;
+  const w = db.wallets.find(x => x.id === t.walletId);
+  const cat = db.categories.find(c => c.id === t.categoryId) || { icon: '💰', name: '—' };
+
+  document.getElementById('d-ic').textContent = cat.icon;
+  const sign = t.type === 'income' ? '+' : '-';
+  const color = t.type === 'income' ? 'var(--green)' : 'var(--red)';
+  document.getElementById('d-amt').style.color = color;
+  document.getElementById('d-amt').textContent = sign + fmt(t.amount, w ? w.currency : 'EUR');
+  document.getElementById('d-title').textContent = t.description || cat.name;
+  const d = new Date(t.date);
+  document.getElementById('d-date').textContent = d.getDate() + ' de ' + monthName(d) + ', ' + d.getFullYear();
+  document.getElementById('d-cat').textContent = cat.name;
+  document.getElementById('d-type').textContent = t.type === 'fixed' ? 'Fixo' : t.type === 'variable' ? 'Variável' : 'Receita';
+  document.getElementById('d-wallet').textContent = w ? w.name + ' · ' + w.currency : '—';
+
+  showScreen('screen-tx-detail');
+}
+function backFromTxDetail() {
+  if (returnToScreen === 'screen-wallet' && currentWalletId) { renderWalletDetail(); showScreen('screen-wallet'); }
+  else showScreen('screen-home');
+}
+function confirmDeleteTx() {
+  openModal({
+    title: 'Excluir transação?',
+    desc: 'Esta ação não pode ser desfeita.',
+    actions: [
+      { label: 'Cancelar', class: 'btn-secondary', onClick: closeModal },
+      { label: 'Excluir', class: 'btn-danger', onClick: () => { deleteTx(); closeModal(); } }
+    ]
+  });
+}
+function deleteTx() {
+  db.transactions = db.transactions.filter(t => t.id !== currentTxId);
+  saveDB();
+  toast('Transação excluída');
+  backFromTxDetail();
+}
+
+// ============================================================
+// ADD TX
+// ============================================================
+function openAdd() {
+  if (db.wallets.length === 0) {
+    openModal({
+      title: 'Crie uma carteira primeiro',
+      desc: 'Você precisa de pelo menos uma carteira para registrar transações.',
+      actions: [
+        { label: 'Cancelar', class: 'btn-secondary', onClick: closeModal },
+        { label: 'Criar', class: 'btn-primary', onClick: () => { closeModal(); openAddWallet(); } }
+      ]
+    });
+    return;
+  }
+  document.getElementById('tx-amount').value = '';
+  document.getElementById('tx-desc').value = '';
+  document.getElementById('tx-date').value = new Date().toISOString().slice(0,10);
+  selectedType = 'variable';
+  document.querySelectorAll('#screen-add .type-btn').forEach(b => b.classList.toggle('active', b.dataset.type === 'variable'));
+  selectedCategoryId = db.categories[0].id;
+
+  const sel = document.getElementById('tx-wallet');
+  sel.innerHTML = db.wallets.map(w => `<option value="${w.id}">${w.icon || CURRENCIES[w.currency].flag} ${escapeHtml(w.name)} (${w.currency})</option>`).join('');
+  sel.onchange = updateTxCurrencyLabel;
+  sel.value = currentWalletId && db.wallets.find(w => w.id === currentWalletId) ? currentWalletId : db.wallets[0].id;
+  updateTxCurrencyLabel();
+
+  renderTxCategories();
+  showScreen('screen-add');
+}
+function updateTxCurrencyLabel() {
+  const wid = document.getElementById('tx-wallet').value;
+  const w = db.wallets.find(x => x.id === wid);
+  if (w) document.getElementById('tx-currency-label').textContent = w.currency;
+}
+function renderTxCategories() {
+  const grid = document.getElementById('tx-cat-grid');
+  grid.innerHTML = db.categories.map(c => `
+    <div class="cat ${c.id === selectedCategoryId ? 'selected' : ''}" onclick="selectCat('${c.id}')">
+      <div class="cat-icon">${c.icon}</div>
+      <div class="cat-label">${escapeHtml(c.name)}</div>
+    </div>`).join('');
+}
+function selectCat(id) { selectedCategoryId = id; renderTxCategories(); }
+function setType(btn, type) {
+  document.querySelectorAll('#screen-add .type-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  selectedType = type;
+}
+function cancelAdd() { showScreen(currentWalletId ? 'screen-wallet' : 'screen-home'); }
+function formatAmountInput(el) {
+  let v = el.value.replace(/[^\d,\.]/g, '');
+  const parts = v.split(/[,\.]/);
+  if (parts.length > 2) v = parts[0] + ',' + parts.slice(1).join('');
+  el.value = v;
+}
+function saveTransaction() {
+  const amount = parseAmount(document.getElementById('tx-amount').value);
+  if (amount <= 0) { toast('Digite um valor maior que zero'); return; }
+  const walletId = document.getElementById('tx-wallet').value;
+  const desc = document.getElementById('tx-desc').value.trim();
+  const date = document.getElementById('tx-date').value || new Date().toISOString().slice(0,10);
+  db.transactions.push({
+    id: uid(), walletId, amount, description: desc,
+    categoryId: selectedCategoryId, type: selectedType, date,
+    createdAt: new Date().toISOString(),
+  });
+  saveDB();
+  toast('Transação salva');
+  if (currentWalletId) { renderWalletDetail(); showScreen('screen-wallet'); }
+  else showScreen('screen-home');
+}
+
+// ============================================================
+// ANALYTICS
+// ============================================================
+function renderAnalytics() {
+  const now = new Date();
+
+  const chipsEl = document.getElementById('analytics-wallet-chips');
+  if (db.wallets.length === 0) {
+    chipsEl.innerHTML = '';
+    document.getElementById('a-total').textContent = '—';
+    document.getElementById('a-balance').textContent = '—';
+    document.getElementById('a-period').textContent = '—';
+    document.getElementById('a-balance-status').textContent = '—';
+    document.getElementById('a-chart-wrap').innerHTML = `
+      <div class="empty" style="padding: 32px 0 12px;">
+        <div class="empty-title" style="font-size: 17px;">Sem dados</div>
+        <div class="empty-desc" style="font-size: 13px;">Crie carteiras e adicione transações</div>
+      </div>`;
+    document.getElementById('a-cat-head').style.display = 'none';
+    document.getElementById('a-cat-list').style.display = 'none';
+    return;
+  }
+
+  chipsEl.innerHTML = `
+    <div class="chip ${analyticsWalletId === 'all' ? 'active' : ''}" onclick="setAnalyticsWallet('all')">Todas</div>
+    ${db.wallets.map(w => `
+      <div class="chip ${analyticsWalletId === w.id ? 'active' : ''}" onclick="setAnalyticsWallet('${w.id}')">
+        ${w.icon || CURRENCIES[w.currency].flag} ${escapeHtml(w.name)}
+      </div>`).join('')}`;
+
+  const mk = currentMonthKey();
+  const primCurr = db.primaryCurrency;
+  let txs, displayCurrency;
+  if (analyticsWalletId === 'all') {
+    const primIds = new Set(db.wallets.filter(w => w.currency === primCurr).map(w => w.id));
+    txs = db.transactions.filter(t => monthKey(t.date) === mk && primIds.has(t.walletId));
+    displayCurrency = primCurr;
+  } else {
+    const w = db.wallets.find(x => x.id === analyticsWalletId);
+    if (!w) { analyticsWalletId = 'all'; renderAnalytics(); return; }
+    txs = db.transactions.filter(t => monthKey(t.date) === mk && t.walletId === w.id);
+    displayCurrency = w.currency;
+  }
+
+  const expenses = txs.filter(t => t.type !== 'income').reduce((s,t) => s+t.amount, 0);
+  const income = txs.filter(t => t.type === 'income').reduce((s,t) => s+t.amount, 0);
+  const balance = income - expenses;
+
+  document.getElementById('a-total').textContent = fmt(expenses, displayCurrency);
+  document.getElementById('a-period').textContent = monthNameCap(now);
+  const balEl = document.getElementById('a-balance');
+  balEl.textContent = (balance >= 0 ? '+' : '') + fmt(balance, displayCurrency).replace('-','').replace('+','');
+  balEl.style.color = balance >= 0 ? 'var(--green)' : 'var(--red)';
+  document.getElementById('a-balance-status').textContent = balance >= 0 ? 'Positivo' : 'Negativo';
+
+  const byCat = {};
+  txs.filter(t => t.type !== 'income').forEach(t => { byCat[t.categoryId] = (byCat[t.categoryId] || 0) + t.amount; });
+  const catEntries = Object.entries(byCat).sort((a,b) => b[1] - a[1]);
+  const chartWrap = document.getElementById('a-chart-wrap');
+
+  if (catEntries.length === 0) {
+    chartWrap.innerHTML = `
+      <div class="empty" style="padding: 32px 0 12px;">
+        <div class="empty-title" style="font-size: 17px;">Sem gastos</div>
+        <div class="empty-desc" style="font-size: 13px;">Sem transações no mês atual</div>
+      </div>`;
+    document.getElementById('a-cat-head').style.display = 'none';
+    document.getElementById('a-cat-list').style.display = 'none';
+    return;
+  }
+
+  const total = expenses;
+  const circumference = 2 * Math.PI * 72;
+  let offset = 0;
+  const segments = catEntries.map(([cid, val], i) => {
+    const pct = val / total;
+    const dash = pct * circumference;
+    const seg = `<circle cx="100" cy="100" r="72" fill="none" stroke="${CHART_COLORS[i % CHART_COLORS.length]}" stroke-width="16" stroke-dasharray="${dash} ${circumference}" stroke-dashoffset="${-offset}" transform="rotate(-90 100 100)" />`;
+    offset += dash;
+    return seg;
+  }).join('');
+
+  chartWrap.innerHTML = `
+    <div class="donut-wrap">
+      <svg width="200" height="200" viewBox="0 0 200 200" style="display:block; margin: 0 auto;">
+        <circle cx="100" cy="100" r="72" fill="none" stroke="var(--surface-strong)" stroke-width="16"/>
+        ${segments}
+      </svg>
+      <div class="donut-center">
+        <div class="donut-center-label">Total</div>
+        <div class="donut-center-val">${fmt(total, displayCurrency)}</div>
+      </div>
+    </div>
+    <div class="legend">
+      ${catEntries.map(([cid, val], i) => {
+        const cat = db.categories.find(c => c.id === cid) || { name: '—' };
+        const pct = Math.round((val/total)*100);
+        return `
+          <div class="legend-row">
+            <div class="legend-dot" style="background:${CHART_COLORS[i % CHART_COLORS.length]};"></div>
+            <div class="legend-name">${escapeHtml(cat.name)}</div>
+            <div class="legend-val">${fmt(val, displayCurrency)} · ${pct}%</div>
+          </div>`;
+      }).join('')}
+    </div>`;
+
+  document.getElementById('a-cat-head').style.display = '';
+  document.getElementById('a-cat-list').style.display = '';
+  document.getElementById('a-cat-list').innerHTML = catEntries.map(([cid, val]) => {
+    const cat = db.categories.find(c => c.id === cid) || { name: '—', icon: '📦' };
+    return `
+      <div class="tile">
+        <div class="tile-ic">${cat.icon}</div>
+        <div class="tile-body">
+          <div class="tile-title">${escapeHtml(cat.name)}</div>
+          <div class="tile-sub">${Math.round((val/total)*100)}% do mês</div>
+        </div>
+        <div class="tile-right">${fmt(val, displayCurrency)}</div>
+      </div>`;
+  }).join('');
+}
+function setAnalyticsWallet(id) { analyticsWalletId = id; renderAnalytics(); }
+
+// ============================================================
+// SETTINGS
+// ============================================================
+function renderSettings() {
+  const c = CURRENCIES[db.primaryCurrency];
+  document.getElementById('primary-curr-flag').textContent = c.flag;
+  document.getElementById('primary-curr-title').textContent = db.primaryCurrency + ' — ' + c.name;
+
+  document.querySelectorAll('#theme-seg .theme-seg-btn').forEach(b => b.classList.toggle('active', b.dataset.theme === db.theme));
+
+  const sw = document.getElementById('color-swatches');
+  sw.innerHTML = PALETTES.map(p => `
+    <div class="sw-group">
+      <div class="sw ${db.accentColor.toLowerCase() === p.hex.toLowerCase() ? 'active' : ''}" style="background:${p.hex};" onclick="setAccent('${p.hex}')"></div>
+      <div class="sw-label">${p.name}</div>
+    </div>`).join('');
+  document.getElementById('custom-color-input').value = db.accentColor;
+}
+function setTheme(theme) { db.theme = theme; saveDB(); applyTheme(); renderSettings(); }
+function applyTheme() {
+  let effective = db.theme;
+  if (db.theme === 'auto') effective = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', effective);
+  document.body.setAttribute('data-theme', effective);
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', effective === 'light' ? '#F2F3F5' : '#1A1E24');
+}
+function setAccent(hex) { db.accentColor = hex; saveDB(); applyAccent(); renderSettings(); }
+function applyAccent() {
+  document.documentElement.style.setProperty('--accent', db.accentColor);
+  document.documentElement.style.setProperty('--accent-rgb', hexToRgb(db.accentColor));
+}
+document.getElementById('custom-color-input').addEventListener('input', (e) => setAccent(e.target.value));
+
+function renderPrimaryCurrOptions() {
+  const container = document.getElementById('primary-curr-options');
+  container.innerHTML = Object.keys(CURRENCIES).map(code => {
+    const c = CURRENCIES[code];
+    const active = code === db.primaryCurrency;
+    return `
+      <div class="tile" onclick="setPrimaryCurrency('${code}')">
+        <div class="tile-ic">${c.flag}</div>
+        <div class="tile-body">
+          <div class="tile-title">${code} — ${c.name}</div>
+        </div>
+        <div class="tile-right">${active ? '<span style="color:var(--green); font-weight:600;">✓ Ativa</span>' : ''}</div>
+      </div>`;
+  }).join('');
+}
+function setPrimaryCurrency(code) {
+  db.primaryCurrency = code; saveDB();
+  toast('Moeda principal atualizada');
+  showScreen('screen-settings');
+}
+
+// ============================================================
+// WALLET EDIT
+// ============================================================
+function openAddWallet() {
+  editingWalletId = null;
+  document.getElementById('we-title').textContent = 'Nova carteira';
+  document.getElementById('we-name').value = '';
+  document.getElementById('we-icon').value = '';
+  document.getElementById('we-budget').value = '';
+  document.getElementById('we-income').value = '';
+  const sel = document.getElementById('we-currency');
+  sel.innerHTML = Object.keys(CURRENCIES).map(code => {
+    const c = CURRENCIES[code];
+    return `<option value="${code}">${c.flag} ${code} — ${c.name}</option>`;
+  }).join('');
+  sel.value = db.primaryCurrency;
+  document.getElementById('we-delete-wrap').style.display = 'none';
+  showScreen('screen-wallet-edit');
+}
+function editCurrentWallet() {
+  const w = db.wallets.find(x => x.id === currentWalletId);
+  if (!w) return;
+  editingWalletId = w.id;
+  document.getElementById('we-title').textContent = 'Editar carteira';
+  document.getElementById('we-name').value = w.name;
+  document.getElementById('we-icon').value = w.icon || '';
+  document.getElementById('we-budget').value = w.budget > 0 ? String(w.budget).replace('.', ',') : '';
+  document.getElementById('we-income').value = w.monthlyIncome > 0 ? String(w.monthlyIncome).replace('.', ',') : '';
+  const sel = document.getElementById('we-currency');
+  sel.innerHTML = Object.keys(CURRENCIES).map(code => {
+    const c = CURRENCIES[code];
+    return `<option value="${code}">${c.flag} ${code} — ${c.name}</option>`;
+  }).join('');
+  sel.value = w.currency;
+  document.getElementById('we-delete-wrap').style.display = '';
+  showScreen('screen-wallet-edit');
+}
+function cancelWalletEdit() {
+  if (editingWalletId) showScreen('screen-wallet');
+  else showScreen('screen-home');
+}
+function saveWallet() {
+  const name = document.getElementById('we-name').value.trim();
+  if (!name) { toast('Dê um nome para a carteira'); return; }
+  const currency = document.getElementById('we-currency').value;
+  const icon = document.getElementById('we-icon').value.trim();
+  const budget = parseAmount(document.getElementById('we-budget').value);
+  const monthlyIncome = parseAmount(document.getElementById('we-income').value);
+
+  if (editingWalletId) {
+    const w = db.wallets.find(x => x.id === editingWalletId);
+    if (w) { w.name = name; w.currency = currency; w.icon = icon; w.budget = budget; w.monthlyIncome = monthlyIncome; }
+    saveDB();
+    toast('Carteira atualizada');
+    renderWalletDetail();
+    showScreen('screen-wallet');
+  } else {
+    db.wallets.push({ id: uid(), name, currency, icon, budget, monthlyIncome, createdAt: new Date().toISOString() });
+    saveDB();
+    toast('Carteira criada');
+    showScreen('screen-home');
+  }
+}
+function confirmDeleteWallet() {
+  const w = db.wallets.find(x => x.id === editingWalletId);
+  if (!w) return;
+  const txCount = db.transactions.filter(t => t.walletId === w.id).length;
+  openModal({
+    title: 'Excluir carteira?',
+    desc: `Remove "${w.name}" e ${txCount} transação${txCount !== 1 ? 'ões' : ''} associada${txCount !== 1 ? 's' : ''}. Irreversível.`,
+    actions: [
+      { label: 'Cancelar', class: 'btn-secondary', onClick: closeModal },
+      { label: 'Excluir', class: 'btn-danger', onClick: () => { deleteWallet(); closeModal(); } }
+    ]
+  });
+}
+function deleteWallet() {
+  db.wallets = db.wallets.filter(w => w.id !== editingWalletId);
+  db.transactions = db.transactions.filter(t => t.walletId !== editingWalletId);
+  saveDB();
+  toast('Carteira excluída');
+  currentWalletId = null; editingWalletId = null;
+  showScreen('screen-home');
+}
+
+// ============================================================
+// EXPORT & CLEAR
+// ============================================================
+function exportCSV() {
+  if (db.transactions.length === 0) { toast('Nenhuma transação para exportar'); return; }
+  const header = ['Data', 'Carteira', 'Moeda', 'Tipo', 'Categoria', 'Descrição', 'Valor'];
+  const rows = db.transactions.map(t => {
+    const w = db.wallets.find(x => x.id === t.walletId) || { name: '?', currency: '?' };
+    const cat = db.categories.find(c => c.id === t.categoryId) || { name: '?' };
+    return [ t.date, w.name, w.currency,
+      t.type === 'fixed' ? 'Fixo' : t.type === 'variable' ? 'Variável' : 'Receita',
+      cat.name, (t.description || '').replace(/"/g,'""'), String(t.amount).replace('.',',')
+    ].map(v => `"${v}"`).join(',');
+  });
+  const csv = '\uFEFF' + [header.map(h => `"${h}"`).join(','), ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'ledger-' + new Date().toISOString().slice(0,10) + '.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('CSV exportado');
+}
+function confirmClearAll() {
+  openModal({
+    title: 'Apagar tudo?',
+    desc: 'Remove todas as carteiras, transações e preferências. Ação irreversível — exporte CSV antes.',
+    actions: [
+      { label: 'Cancelar', class: 'btn-secondary', onClick: closeModal },
+      { label: 'Apagar', class: 'btn-danger', onClick: () => { clearAll(); closeModal(); } }
+    ]
+  });
+}
+function clearAll() {
+  localStorage.removeItem(DB_KEY);
+  db = loadDB();
+  applyTheme(); applyAccent();
+  toast('Dados apagados');
+  showScreen('screen-home');
+}
+
+// ============================================================
+// MODAL & TOAST
+// ============================================================
+function openModal({ title, desc, actions }) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-desc').textContent = desc;
+  const actEl = document.getElementById('modal-actions');
+  actEl.innerHTML = '';
+  actions.forEach(a => {
+    const btn = document.createElement('button');
+    btn.className = 'btn ' + a.class;
+    btn.textContent = a.label;
+    btn.onclick = a.onClick;
+    actEl.appendChild(btn);
+  });
+  document.getElementById('modal').classList.add('open');
+}
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+document.getElementById('modal').addEventListener('click', (e) => { if (e.target.id === 'modal') closeModal(); });
+
+let toastTimer;
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ============================================================
+// INIT
+// ============================================================
+function init() {
+  applyTheme();
+  applyAccent();
+  if (db.theme === 'auto') {
+    window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', applyTheme);
+  }
+  if (db.firstRun) { db.firstRun = false; saveDB(); }
+  renderHome();
+}
+init();
+</script>
+</body>
+</html>
